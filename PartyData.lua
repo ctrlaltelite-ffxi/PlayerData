@@ -15,67 +15,56 @@ start_time = os.time()
 
 windower.register_event('action', function(act)
   local playerName = windower.ffxi.get_mob_by_id(act.actor_id).name
-
-  if settings.WhiteList:contains(playerName)then
-    for k,v in pairs(act) do
-      -- if k == 'targets' then print(v) end
-      if k == 'category' then print(k..':'..tostring(v)) end
-      if k == 'param' then print(k..':'..tostring(v)) end --A parameter passed usually to further identify the type of action, such as spell/ability ID.
-      if k == 'targets' then 
-        for t_k,t_v in pairs(v) do
-
-          -- For each target get actions
-          for a_k, a_v in pairs(t_v) do
-            -- print(a_k)
-            -- if a_k == 'action_count' then print(a_k..':'..tostring(a_v)) end
-            -- if a_k == 'id' then print(a_k..':'..tostring(a_v)) end
-            if a_k == 'actions' then 
-              for act_key, act_val in pairs (a_v) do
-                print('action_param:'..act_val.param) --A specific parameter for this action. Typically the damage number or spell ID.
-                print('message:'..act_val.message) --A message to be displayed, given certain parameters. Refer to Message IDs for a full reference
-                print('addEffect1:'..act_val.add_effect_effect) -- 0 for attacks and abilities that do not have an additional status effect.
-                print('addEffect2:'..act_val.add_effect_param) -- Usually the damage dealt by the additional effect, including Skillchain damage for weapon skills.
-                -- printTable(act_val)
-              end
-
-            end
-          end
-        end
-      end
-    end 
-  end
-end)
-
-function printTable(table)
-  for k,v in pairs(table) do
-    print(k..':'..tostring(v))
-  end
-end
-
-
-
-
-windower.register_event('incoming text', function(_, text, _, _, blocked)
-  if blocked or text == '' then
-      return
+  
+  -- Exits if not part of the white list
+  if not settings.WhiteList:contains(playerName) then 
+    return 
   end
 
+  -- Create New file if needed, one file will be created per hour
   local date = os.date('*t')
   local file = files.new('../../logs/%s_%.4u.%.2u.%.2u.%.2u.log':format('PartyData', date.year, date.month, date.day, date.hour))
   if not file:exists() then
-      file:create()
+    file:create()
   end
 
+  -- Get Party Info every 5 seconds and log event
   seconds = os.time() - start_time
   if seconds >= 5 then
     getPartyStats(file)
     start_time = os.time()
   end
 
-  
+  -- Log Melee hits
+  if act.category == 1 then 
+    processMelee(file, act, playerName) 
+  end
 
-  -- file:append('%s%s\n':format(settings.AddTimestamp and os.date(settings.TimestampFormat, os.time()) or '', text:strip_format()))
 end)
+
+
+function processMelee(file, act, playerName)
+  local hitType = {
+    [1]='Normal',
+    [15]='Miss',
+    [67]='Crit'
+  }
+  
+  local values = {}
+  for _, target in pairs(act.targets) do
+    values.targetName = windower.ffxi.get_mob_by_id(target.id).name
+    values.actionCount = target.action_count
+    
+    for _, action in pairs(target.actions) do
+      values.normalDamage = action.param
+      values.enspellDamage = action.add_effect_param
+      values.hitType = hitType[action.message] -- 1=Normal, 15=Miss, 67=Crit
+
+
+      writeToFile(file, 'meleeEvent', values)
+    end
+  end
+end
 
 function getPartyStats(file)
   local party = windower.ffxi.get_party()
@@ -90,12 +79,15 @@ function getPartyStats(file)
     elseif k == 'party1_count' then writeToFile(file,'partyCount',v) 
     end
   end
-
-
 end
 
 function writeToFile(file, reqType, value)
-  if reqType == 'playerInfo' then file:append('{eventType:\''..reqType..',ts:\''..os.date(settings.TimestampFormat, os.time())..'\',name:\''..value.name..'\',hp:'..tostring(value.hp)..',mp:'..tostring(value.mp)..'}\n') 
-  elseif reqType == 'partyCount' then file:append('{eventType:\''..reqType..',ts:\''..os.date(settings.TimestampFormat, os.time())..'\',partySize:'..tostring(value)..'}\n') 
+  print(reqType)
+  local currentTime = os.date(settings.TimestampFormat, os.time())
+  if reqType == 'playerInfo' then file:append('{eventType:\''..reqType..',ts:\''..currentTime..'\',name:\''..value.name..'\',hp:'..tostring(value.hp)..',mp:'..tostring(value.mp)..'}\n') 
+  elseif reqType == 'partyCount' then file:append('{eventType:\''..reqType..',ts:\''..currentTime..'\',partySize:'..tostring(value)..'}\n') 
+  elseif reqType == 'meleeEvent' then 
+    
+    file:append('{eventType:\'%s\',ts:\'%s\',targetName:\'%s\',regularDamage:%s,enspellDamage:%s,hitType:%s,hitCount:%s}\n':format(reqType,currentTime,value.targetName,value.normalDamage,value.enspellDamage,value.hitType,value.actionCount))
   end
 end
