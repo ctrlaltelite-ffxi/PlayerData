@@ -47,7 +47,8 @@ function processMelee(file, act, playerName)
   local hitType = {
     [1]='Normal',
     [15]='Miss',
-    [67]='Crit'
+    [67]='Crit',
+    [31]='Shadow'
   }
   
   local values = {}
@@ -60,7 +61,7 @@ function processMelee(file, act, playerName)
       values.enspellDamage = action.add_effect_param
       values.hitType = hitType[action.message] -- 1=Normal, 15=Miss, 67=Crit
 
-
+      -- Write to file
       writeToFile(file, 'meleeEvent', values)
     end
   end
@@ -83,10 +84,10 @@ end
 
 function writeToFile(file, reqType, value)
   local currentTime = os.date(settings.TimestampFormat, os.time())
-  
+
   if reqType == 'playerInfo' then 
     file:append('{eventType:\'%s\',ts:\'%s\',name:\'%s\',hp:%s,mp:%s}\n'
-      :format(eventType, currentTime, value.name, value.hp, value.mp))
+      :format(reqType, currentTime, value.name, value.hp, value.mp))
 
   elseif reqType == 'partyCount' then
     file:append('{eventType:\'%s\',ts:\'%s\',partySize:%s}\n'
