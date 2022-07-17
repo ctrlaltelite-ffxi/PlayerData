@@ -8,7 +8,7 @@ files = require('files')
 
 settings = {}
 settings.TimestampFormat = '%Y-%m-%d %H:%M:%S'
-settings.WhiteList = S{'Eit','Eitwo'}
+settings.WhiteList = S{'Eit','Eitwo','Pipster','Firlei','Andyhara','Melkhior','Beastaru'}
 
 start_time = os.time()
 
