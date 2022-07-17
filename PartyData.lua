@@ -82,12 +82,18 @@ function getPartyStats(file)
 end
 
 function writeToFile(file, reqType, value)
-  print(reqType)
   local currentTime = os.date(settings.TimestampFormat, os.time())
-  if reqType == 'playerInfo' then file:append('{eventType:\''..reqType..',ts:\''..currentTime..'\',name:\''..value.name..'\',hp:'..tostring(value.hp)..',mp:'..tostring(value.mp)..'}\n') 
-  elseif reqType == 'partyCount' then file:append('{eventType:\''..reqType..',ts:\''..currentTime..'\',partySize:'..tostring(value)..'}\n') 
+  
+  if reqType == 'playerInfo' then 
+    file:append('{eventType:\'%s\',ts:\'%s\',name:\'%s\',hp:%s,mp:%s}\n'
+      :format(eventType, currentTime, value.name, value.hp, value.mp))
+
+  elseif reqType == 'partyCount' then
+    file:append('{eventType:\'%s\',ts:\'%s\',partySize:%s}\n'
+      :format(reqType, currentTime, value))
+
   elseif reqType == 'meleeEvent' then 
-    
-    file:append('{eventType:\'%s\',ts:\'%s\',targetName:\'%s\',regularDamage:%s,enspellDamage:%s,hitType:%s,hitCount:%s}\n':format(reqType,currentTime,value.targetName,value.normalDamage,value.enspellDamage,value.hitType,value.actionCount))
+    file:append('{eventType:\'%s\',ts:\'%s\',targetName:\'%s\',regularDamage:%s,enspellDamage:%s,hitType:%s,hitCount:%s}\n'
+      :format(reqType, currentTime, value.targetName, value.normalDamage, value.enspellDamage, value.hitType, value.actionCount))
   end
 end
